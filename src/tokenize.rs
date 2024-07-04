@@ -176,7 +176,7 @@ fn tokenize_string(chars: &[char], index: &mut usize) -> Result<Token, TokenizeE
 
 #[cfg(test)]
 impl Token {
-    fn string(input: &str) -> Self {
+    pub fn string(input: &str) -> Self {
         Self::String(String::from(input))
     }
 }
