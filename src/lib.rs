@@ -8,7 +8,7 @@ mod value;
 mod tokenize;
 mod parse;
 
-pub fn parse(input: String) -> Result<Value, ParseError> {
+pub fn parse(input: &str) -> Result<Value, ParseError> {
     let tokens = tokenize(input)?;
     let value = parse_tokens(&tokens, &mut 0)?;
     Ok(value)
