@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{tokenize::Token, value::Value};
 
 type ParseResult = Result<Value, TokenParseError>;
@@ -92,7 +94,37 @@ fn parse_array(tokens: &[Token], index: &mut usize) -> ParseResult {
 }
 
 fn parse_object(tokens: &[Token], index: &mut usize) -> ParseResult {
-    todo!()
+    let mut object = HashMap::new();
+
+    loop {
+        *index += 1;
+        if tokens[*index] == Token::RightBrace {
+            break;
+        }
+
+        if let Token::String(key) = &tokens[*index] {
+            *index += 1;
+            let token = &tokens[*index];
+            if Token::Colon == *token {
+                *index += 1;
+                let value = parse_tokens(tokens, index)?;
+                object.insert(key.clone(), value);
+
+                match &tokens[*index] {
+                    Token::Comma => {}
+                    Token::RightBrace => break,
+                    _ => return Err(TokenParseError::ExpectedComma),
+                }
+            } else {
+                return Err(TokenParseError::ExpectedColon);
+            }
+        } else {
+            return Err(TokenParseError::ExpectedProperty);
+        }
+    }
+
+    *index += 1;
+    Ok(Value::Object(object))
 }
 
 #[derive(Debug, PartialEq)]
@@ -105,10 +137,16 @@ enum TokenParseError {
     InvalidCodePointValue,
 
     ExpectedComma,
+
+    ExpectedColon,
+
+    ExpectedProperty,
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use crate::tokenize::Token;
     use crate::value::Value;
 
@@ -206,6 +244,112 @@ mod tests {
             Token::RightBracket,
         ];
         let expected = Value::Array(vec![Value::Null, Value::Array(vec![Value::Null])]);
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parses_object() {
+        // { "a": true }
+        let input = vec![
+            Token::LeftBrace,
+            Token::String("a".into()),
+            Token::Colon,
+            Token::True,
+            Token::RightBrace,
+        ];
+        let expected = Value::Object(HashMap::from([("a".into(), Value::Boolean(true))]));
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parses_object_with_nested_object() {
+        // { "a": { "b": true } }
+        let input = vec![
+            Token::LeftBrace,
+            Token::String("a".into()),
+            Token::Colon,
+            Token::LeftBrace,
+            Token::String("b".into()),
+            Token::Colon,
+            Token::True,
+            Token::RightBrace,
+            Token::RightBrace,
+        ];
+        let expected = Value::Object(HashMap::from([(
+            "a".into(),
+            Value::Object(HashMap::from([("b".into(), Value::Boolean(true))])),
+        )]));
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parses_object_with_nested_array() {
+        // { "a": [true] }
+        let input = vec![
+            Token::LeftBrace,
+            Token::String("a".into()),
+            Token::Colon,
+            Token::LeftBracket,
+            Token::True,
+            Token::RightBracket,
+            Token::RightBrace,
+        ];
+        let expected = Value::Object(HashMap::from([(
+            "a".into(),
+            Value::Array(vec![Value::Boolean(true)]),
+        )]));
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parses_object_with_nested_array_and_object() {
+        // { "a": [true, { "b": true }] }
+        let input = vec![
+            Token::LeftBrace,
+            Token::String("a".into()),
+            Token::Colon,
+            Token::LeftBracket,
+            Token::True,
+            Token::Comma,
+            Token::LeftBrace,
+            Token::String("b".into()),
+            Token::Colon,
+            Token::True,
+            Token::RightBrace,
+            Token::RightBracket,
+            Token::RightBrace,
+        ];
+        let expected = Value::Object(HashMap::from([(
+            "a".into(),
+            Value::Array(vec![
+                Value::Boolean(true),
+                Value::Object(HashMap::from([("b".into(), Value::Boolean(true))])),
+            ]),
+        )]));
+
+        check(&input, expected);
+    }
+
+    #[test]
+    fn parses_array_with_object() {
+        // [ { "a": true } ]
+        let input = vec![
+            Token::LeftBracket,
+            Token::LeftBrace,
+            Token::String("a".into()),
+            Token::Colon,
+            Token::True,
+            Token::RightBrace,
+            Token::RightBracket,
+        ];
+        let expected = Value::Array(vec![Value::Object(HashMap::from([(
+            "a".into(),
+            Value::Boolean(true),
+        )]))]);
 
         check(&input, expected);
     }
