@@ -4,7 +4,7 @@ use crate::{tokenize::Token, value::Value};
 
 type ParseResult = Result<Value, TokenParseError>;
 
-fn parse_tokens(tokens: &[Token], index: &mut usize) -> ParseResult {
+pub fn parse_tokens(tokens: &[Token], index: &mut usize) -> ParseResult {
     let token = &tokens[*index];
     if matches!(
         token,
@@ -128,7 +128,7 @@ fn parse_object(tokens: &[Token], index: &mut usize) -> ParseResult {
 }
 
 #[derive(Debug, PartialEq)]
-enum TokenParseError {
+pub enum TokenParseError {
     /// An escape sequence was started without 4 hexadecimal digits afterwards
     UnfinishedEscape,
     /// A character in an escape sequence was not valid hexadecimal
